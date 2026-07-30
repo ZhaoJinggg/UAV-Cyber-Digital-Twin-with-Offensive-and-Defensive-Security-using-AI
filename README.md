@@ -505,7 +505,7 @@ docs/UAV and Digital-Twin with AI Intrusion Detection Framework/
 <summary><strong>Compile PDF</strong> (optional — not required to run the stack)</summary>
 
 ```bash
-cd "docs/UAV and Digital-Twin with AI Intrusion Detection Framework"
+cd "Docs/Manual.pdf"
 
 tectonic main.tex
 # or: latexmk -pdf -interaction=nonstopmode main.tex
