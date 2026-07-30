@@ -149,20 +149,11 @@ uav-cyber-ml/
 │   ├── mav_gateway.py / defense.py / live_*.py
 │   └── artifacts/            # cnn_mav1d.pt, *.joblib, metrics (regenerable)
 ├── datasets/                 # see datasets/README.md
-│   ├── runs/<scenario>/run_NN/
-│   ├── *_dataset.csv
-│   ├── DATA_DICTIONARY.md
-│   └── paper_live_metrics.json
+│   └── DATA_DICTIONARY.md
 ├── scripts/
 │   └── enable_network_capture.sh
-├── docs/
-│   └── UAV and Digital-Twin with AI Intrusion Detection Framework/
-│       ├── main.tex / preamble.tex / references.bib
-│       ├── chapters/         # Phases 1–3 + appendices
-│       ├── figures/
-│       ├── main.pdf          # prebuilt handbook (optional)
-│       └── README.md
-└── papers/                   # conference drafts / figures (optional for code users)
+├── Docs/
+│   └── Manual
 ```
 
 > The technical manual lives at `docs/UAV and Digital-Twin with AI Intrusion Detection Framework/` (exact folder name). There is no `docs/technical_manual/` alias in this tree.
