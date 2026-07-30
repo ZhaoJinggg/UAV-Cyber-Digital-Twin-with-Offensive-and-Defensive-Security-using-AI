@@ -1,0 +1,15 @@
+{
+  "live_train": false,
+  "trained_run_ids": [
+    "benign/run_00",
+    "command_flood_dos/run_00",
+    "disarm_injection/run_00",
+    "gps_spoofing/run_00",
+    "mission_injection/run_00",
+    "mode_change_land/run_00",
+    "param_injection/run_00",
+    "rc_override/run_00"
+  ],
+  "updated_at": "2026-07-29T09:48:42.444063+00:00",
+  "last_mode": "full+cnn1d"
+}

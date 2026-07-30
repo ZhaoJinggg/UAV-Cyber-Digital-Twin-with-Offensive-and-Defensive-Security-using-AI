@@ -1,0 +1,54 @@
+{
+  "binary": {
+    "f1_attack": 0.9979787090688587,
+    "roc_auc": 0.9999908844609386,
+    "n_rows": 37613
+  },
+  "multiclass": {
+    "f1_macro": 1.0,
+    "classes": [
+      "benign",
+      "command_flood_dos",
+      "disarm_injection",
+      "gps_spoofing",
+      "mission_injection",
+      "mode_change_land",
+      "param_injection",
+      "rc_override"
+    ]
+  },
+  "n_features": 30,
+  "selected": [
+    "rel_alt",
+    "yaw",
+    "tgt_z",
+    "tgt_y",
+    "tgt_x",
+    "heading",
+    "x",
+    "y",
+    "pos_err_z",
+    "tgt_vx",
+    "tgt_vy",
+    "z",
+    "batt_voltage",
+    "vfr_alt",
+    "tgt_vz",
+    "vx",
+    "pitch",
+    "tilt_mag",
+    "roll",
+    "vz",
+    "batt_remaining",
+    "climb",
+    "vy",
+    "cpu_load",
+    "tgt_yawrate",
+    "speed",
+    "base_mode",
+    "tgt_pitchrate",
+    "tgt_thrust",
+    "horiz_speed"
+  ],
+  "mode": "full"
+}

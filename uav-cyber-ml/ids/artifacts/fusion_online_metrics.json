@@ -1,0 +1,54 @@
+{
+  "binary": {
+    "f1_attack": 1.0,
+    "roc_auc": 1.0,
+    "n_rows": 1885
+  },
+  "multiclass": {
+    "f1_macro": 1.0,
+    "classes": [
+      "benign",
+      "command_flood_dos",
+      "disarm_injection",
+      "gps_spoofing",
+      "mission_injection",
+      "mode_change_land",
+      "param_injection",
+      "rc_override"
+    ]
+  },
+  "n_features": 30,
+  "selected": [
+    "std_iat",
+    "p_yaw_mean",
+    "p_yaw_min",
+    "p_yaw_max",
+    "p_vy_std",
+    "p_pos_err_z_max",
+    "byte_count",
+    "p_yaw_last",
+    "p_rel_alt_max",
+    "p_vx_max",
+    "p_pos_err_z_min",
+    "p_rel_alt_min",
+    "p_vy_min",
+    "p_vx_min",
+    "p_yaw_std",
+    "mean_len",
+    "p_rollspeed_mean",
+    "p_roll_max",
+    "p_vy_max",
+    "p_motor_spread_mean",
+    "p_roll_mean",
+    "p_tilt_mag_max",
+    "p_roll_min",
+    "p_climb_min",
+    "p_climb_max",
+    "p_tilt_mag_mean",
+    "p_custom_mode_mean",
+    "p_rel_alt_mean",
+    "p_vx_mean",
+    "p_vz_max"
+  ],
+  "mode": "full"
+}

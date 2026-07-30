@@ -1,0 +1,116 @@
+% Shared preamble for UAV–Digital Twin–AI IDS Technical Manual
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc,shapes.multipart}
+\usepackage{csquotes}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{cleveref}
+% \usepackage[utf8]{inputenc}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=green!40!black,
+  urlcolor=blue!60!black
+}
+
+\definecolor{codebg}{RGB}{248,249,250}
+\definecolor{codekw}{RGB}{0,90,156}
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{gray},
+  stringstyle=\color{teal},
+  breaklines=true,
+  frame=single,
+  rulecolor=\color{black!20},
+  showstringspaces=false,
+  columns=fullflexible,
+  tabsize=2
+}
+
+\setlength{\headheight}{14pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textit{UAV--Digital Twin--AI IDS Technical Manual}}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newcommand{\placeholder}[1]{%
+  \begin{center}
+  \fbox{\parbox{0.9\textwidth}{\centering\vspace{1.2cm}
+  \textbf{Figure placeholder:} #1\\[0.3em]
+  {\small Replace with lab screenshot / diagram capture.}
+  \vspace{1.2cm}}}
+  \end{center}
+}
+
+\newcommand{\cmdnote}[1]{\par\noindent\textit{Explanation:} #1\par\medskip}
+\newcommand{\labpath}{\texttt{uav-cyber-ml}}
+
+\definecolor{notebg}{RGB}{232,244,253}
+\definecolor{tipbg}{RGB}{232,245,233}
+\definecolor{warnbg}{RGB}{255,243,224}
+\definecolor{impbg}{RGB}{252,228,236}
+\definecolor{okbg}{RGB}{227,242,253}
+
+\newcommand{\notebox}[2]{%
+  \begin{center}
+  \fcolorbox{black!25}{#1}{\parbox{0.92\textwidth}{\vspace{0.35em}
+  \textbf{#2}\par\vspace{0.25em}\relax}}
+  \end{center}\medskip}
+\newcommand{\beginnernote}[1]{\par\noindent\colorbox{notebg}{\parbox{0.95\textwidth}{\textbf{Beginner Note:} #1}}\par\medskip}
+\newcommand{\tipbox}[1]{\par\noindent\colorbox{tipbg}{\parbox{0.95\textwidth}{\textbf{Tip:} #1}}\par\medskip}
+\newcommand{\warnbox}[1]{\par\noindent\colorbox{warnbg}{\parbox{0.95\textwidth}{\textbf{Warning:} #1}}\par\medskip}
+\newcommand{\impbox}[1]{\par\noindent\colorbox{impbg}{\parbox{0.95\textwidth}{\textbf{Important:} #1}}\par\medskip}
+\newcommand{\bestbox}[1]{\par\noindent\colorbox{okbg}{\parbox{0.95\textwidth}{\textbf{Best Practice:} #1}}\par\medskip}
+\newcommand{\mistakebox}[1]{\par\noindent\colorbox{warnbg}{\parbox{0.95\textwidth}{\textbf{Common Mistake:} #1}}\par\medskip}
+
+% Lab screenshots live under figures/. Optional path:
+%   \figshot[fig_dt_dashboard.png]{Caption text}
+% Without optional argument, renders a framed placeholder (legacy).
+% Captions are normal LaTeX text (escape \_ in filenames if needed).
+\graphicspath{{figures/}}
+\newcommand{\figshot}[2][]{%
+  \begin{figure}[H]\centering
+  \if\relax\detokenize{#1}\relax
+    \fbox{\parbox{0.88\textwidth}{\centering\vspace{1.4cm}
+    \textbf{Screenshot placeholder}\\[0.4em]#2\\[0.3em]
+    {\footnotesize Insert real PT/DT lab capture here.}
+    \vspace{1.4cm}}}
+  \else
+    \IfFileExists{figures/#1}{%
+      \includegraphics[width=0.92\textwidth,keepaspectratio]{figures/#1}%
+    }{%
+      \IfFileExists{#1}{%
+        \includegraphics[width=0.92\textwidth,keepaspectratio]{#1}%
+      }{%
+        \fbox{\parbox{0.88\textwidth}{\centering\vspace{1.0cm}
+        \textbf{Missing figure file:} \texttt{#1}\\[0.3em]
+        {\footnotesize Caption: #2}
+        \vspace{1.0cm}}}%
+      }%
+    }%
+  \fi
+  \caption{#2}
+  \end{figure}}
+

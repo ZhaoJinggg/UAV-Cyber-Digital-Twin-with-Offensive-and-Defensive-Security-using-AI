@@ -1,0 +1,44 @@
+{
+  "binary": {
+    "f1_attack": 0.8395061728395061,
+    "roc_auc": 0.9560117302052785,
+    "n_rows": 1959
+  },
+  "multiclass": {
+    "f1_macro": 0.2638321995464853,
+    "classes": [
+      "benign",
+      "command_flood_dos",
+      "disarm_injection",
+      "gps_spoofing",
+      "mission_injection",
+      "mode_change_land",
+      "param_injection",
+      "rc_override"
+    ]
+  },
+  "n_features": 20,
+  "selected": [
+    "byte_count",
+    "std_len",
+    "mean_len",
+    "std_iat",
+    "from_uav_count",
+    "unique_msgids",
+    "pkt_count",
+    "to_uav_count",
+    "byte_rate",
+    "heartbeat_count",
+    "command_long_count",
+    "pkt_rate",
+    "mean_iat",
+    "unique_sysids",
+    "gps_input_count",
+    "param_set_count",
+    "mission_item_count",
+    "rc_override_count",
+    "manual_control_count",
+    "set_mode_count"
+  ],
+  "mode": "full"
+}
