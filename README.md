@@ -1,1 +1,588 @@
-# UAV-Cyber-Digital-Twin-with-Offensive-and-Defensive-Security-using-AI
+<div align="center">
+
+# UAV Cyber Digital Twin
+
+### MAVLink Attacks · AI Intrusion Detection · Closed-Loop Defence
+
+A research cyber-range coupling a **Physical Twin** (PX4 + Gazebo SITL) with a **Cyber Digital Twin** (FastAPI + Three.js) for attack injection, aligned datasets, AI IDS, and proactive / reactive / hybrid defence.
+
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)](#prerequisites)
+[![PX4](https://img.shields.io/badge/PX4-SITL-00A86B?style=flat-square)](#architecture-overview)
+[![MAVLink](https://img.shields.io/badge/MAVLink-pymavlink-1B4F72?style=flat-square)](#architecture-overview)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Dashboard-009688?style=flat-square&logo=fastapi&logoColor=white)](#running-the-dashboard)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-lightgrey?style=flat-square)](#prerequisites)
+[![License](https://img.shields.io/badge/License-TBD%20%2F%20Private%20research-important?style=flat-square)](#citation--license)
+
+[Features](#features) ·
+[Architecture](#architecture-overview) ·
+[Quick Start](#quick-start) ·
+[Attacks](#attack-scenarios) ·
+[Defence](#defence-modes) ·
+[Docs](#technical-manual) ·
+[Troubleshooting](#troubleshooting)
+
+</div>
+
+---
+
+## Table of contents
+
+1. [Features / research contributions](#features)
+2. [Architecture overview](#architecture-overview)
+3. [Repository layout](#repository-layout)
+4. [Repository contents and data release](#repository-contents)
+5. [Prerequisites](#prerequisites)
+6. [Quick start (beginner path)](#quick-start)
+7. [Configuration](#configuration)
+8. [Running the dashboard](#running-the-dashboard)
+9. [Dataset generation workflow](#dataset-generation)
+10. [Training the IDS](#training-the-ids)
+11. [Attack scenarios](#attack-scenarios)
+12. [Defence modes](#defence-modes)
+13. [Technical manual](#technical-manual)
+14. [Research use cases](#research-use-cases)
+15. [Troubleshooting](#troubleshooting)
+16. [Citation / license](#citation--license)
+17. [Acknowledgements](#acknowledgements)
+
+---
+
+A research cyber-range that couples a **Physical Twin (PT)** — PX4 Autopilot + Gazebo SITL on an Ubuntu UAV workstation — with a **Cyber Digital Twin (DT)** — FastAPI + Three.js dashboard on a Mac or Linux host. From the DT you fly a shared multi-waypoint mission, inject **MAVLink cyber–physical attacks**, record **aligned physical and network datasets**, train a lightweight **AI intrusion detection system** (TinyMAV 1D-CNN + LightGBM cascade), and evaluate **proactive / reactive / hybrid** defence through a local MAVLink gateway.
+
+MAVLink (via **pymavlink**) is the operational control and telemetry path. **ROS 2 is optional and educational** (see the technical manual Phase 1); it is **not required** to run DT scenarios, dataset collection, IDS, or defence.
+
+---
+
+<a id="features"></a>
+## ✨ Features / research contributions
+
+- **Synchronised PT ↔ DT loop** — live 3D twin, HUD, trails, and graphs driven by real PX4 telemetry (`:14550`), while Gazebo on the UAV PC remains the physical visualisation.
+- **Shared-mission protocol** — every scenario (benign and attack) flies the same multi-waypoint OFFBOARD plan so pre/post windows are comparable; only the attack window is labeled as attack.
+- **Two-layer labeled datasets** — physical (flight state) and network (MAVLink traffic), each in raw + processed form, with run metadata and a data dictionary.
+- **Attack taxonomy** — Tier A core case studies + Tier B supporting classes (see [CASE_STUDIES.md](CASE_STUDIES.md)).
+- **AI IDS** — primary **TinyMAV 1D-CNN** (`cnn1d`) with optional **LightGBM** physical / network / fusion cascade; live scoring in the dashboard.
+- **Closed-loop defence** — Mac-local MAVLink **gateway** (`:19550`) for pre-PX4 drops (**proactive**), post-detect reclaim (**reactive**), or both (**hybrid**).
+- **End-to-end orchestration** — SSH start/stop of SITL, one-click dashboard scenarios, or CLI matrix runs via `orchestrator.py`.
+
+---
+
+<a id="architecture-overview"></a>
+## 🏗 Architecture overview
+
+```mermaid
+flowchart LR
+  subgraph PT["Physical Twin (Ubuntu UAV PC)"]
+    PX4["PX4 SITL"]
+    GZ["Gazebo Classic"]
+    PX4 --- GZ
+  end
+
+  subgraph DT["Digital Twin host (Mac / Linux)"]
+    Dash["FastAPI + Three.js\nhttp://127.0.0.1:8000"]
+    Orch["orchestrator / recorders"]
+    GW["MAVLink gateway\n:19550"]
+    IDS["TinyMAV CNN + LightGBM"]
+    Def["Defence IPS"]
+    Dash --> Orch
+    Orch --> IDS
+    IDS --> Def
+    Def --> GW
+  end
+
+  Orch -->|"SSH start/stop SITL"| PT
+  PX4 -->|"telemetry UDP :14550"| Orch
+  GW -->|"forward / drop"| PX4
+  Orch -->|"attacks + pilot setpoints\nvia gateway or direct"| GW
+  IDS -->|"live alerts + reclaim"| Dash
+```
+
+**Typical lab addressing** (overridable via env / `config.py`):
+
+| Role | Default |
+|------|---------|
+| UAV / PT host | `192.168.123.130` |
+| SSH user | `danish` |
+| Telemetry / GCS broadcast | UDP **14550** |
+| Proactive MAVLink gateway (DT-local) | UDP **19550** → UAV `:14550` |
+| Legacy GCS API peer | UDP **18570** |
+| Dashboard | `http://127.0.0.1:8000` |
+
+```
+DT host ──ssh──► start/stop PX4+Gazebo on PT
+DT recorder ◄── MAVLink :14550 ── physical features + live twin
+DT tcpdump  ◄── DT⇄PT packets ── network features
+DT attacks  ──► gateway :19550 ──► PX4 :14550   (or direct if MAV_GATEWAY=0)
+IDS + IPS   ──► drop at gateway and/or reclaim control
+```
+
+---
+
+<a id="repository-layout"></a>
+## 📁 Repository layout
+
+```
+uav-cyber-ml/
+├── README.md                 # this file (canonical project README)
+├── CASE_STUDIES.md           # attack hypotheses, P/N/T effects, defence mapping
+├── requirements.txt
+├── run_dashboard.sh          # launch dashboard (primes sudo for tcpdump)
+├── config.py                 # hosts, ports, mission plan, IDS/defence defaults
+├── orchestrator.py           # CLI master runner: SITL, record, attack, label
+├── ssh_control.py            # passwordless SSH start/stop/monitor of PX4 SITL
+├── mav_common.py             # shared pymavlink GCS helpers, vehicle state, abort
+├── build_dataset.py          # merge datasets/runs/ → labeled CSVs + dictionary
+├── attacks/                  # benign pilot + attack suite
+│   ├── benign.py
+│   └── suite.py              # Tier A / Tier B attack registry
+├── recorders/
+│   ├── physical_recorder.py
+│   ├── network_recorder.py
+│   ├── twin_bridge.py
+│   └── live_network.py
+├── dashboard/                # FastAPI + Three.js digital twin UI
+│   ├── server.py
+│   ├── datasets.py
+│   └── static/               # index.html, app.js, app.css
+├── ids/                      # TinyMAV CNN + LightGBM cascade, gateway, defence
+│   ├── __main__.py           # python -m ids
+│   ├── train.py / cnn_*.py
+│   ├── mav_gateway.py / defense.py / live_*.py
+│   └── artifacts/            # cnn_mav1d.pt, *.joblib, metrics (regenerable)
+├── datasets/                 # see datasets/README.md
+│   ├── runs/<scenario>/run_NN/
+│   ├── *_dataset.csv
+│   ├── DATA_DICTIONARY.md
+│   └── paper_live_metrics.json
+├── scripts/
+│   └── enable_network_capture.sh
+├── docs/
+│   └── UAV and Digital-Twin with AI Intrusion Detection Framework/
+│       ├── main.tex / preamble.tex / references.bib
+│       ├── chapters/         # Phases 1–3 + appendices
+│       ├── figures/
+│       ├── main.pdf          # prebuilt handbook (optional)
+│       └── README.md
+└── papers/                   # conference drafts / figures (optional for code users)
+```
+
+> The technical manual lives at `docs/UAV and Digital-Twin with AI Intrusion Detection Framework/` (exact folder name). There is no `docs/technical_manual/` alias in this tree.
+
+<details>
+<summary><strong>Path → purpose quick reference</strong></summary>
+
+| Path | Purpose |
+|------|---------|
+| `config.py` | Hosts, ports, mission plan, timing, IDS/defence defaults |
+| `orchestrator.py` | CLI master runner: SITL, record, attack, label |
+| `ssh_control.py` | Passwordless SSH start/stop/monitor of PX4 SITL |
+| `mav_common.py` | Shared pymavlink GCS helpers, vehicle state, abort |
+| `build_dataset.py` | Merge `datasets/runs/` → labeled CSVs + data dictionary |
+| `attacks/` | Benign pilot + attack suite (`suite.py`, `benign.py`) |
+| `recorders/` | Physical + network recorders, twin bridge, live network |
+| `dashboard/` | FastAPI app + Three.js static UI (`dashboard/static/`) |
+| `ids/` | Training, TinyMAV CNN, LightGBM, live bridge, gateway, defence |
+| `ids/artifacts/` | Trained models and metrics (regenerable) |
+| `datasets/` | Per-run recordings and merged matrices — see [datasets/README.md](datasets/README.md) |
+| `scripts/enable_network_capture.sh` | Helper to enable network-layer capture |
+| `run_dashboard.sh` | Launch dashboard (primes `sudo` for tcpdump) |
+| `CASE_STUDIES.md` | Hypotheses, P/N/T effects, defence mapping |
+| `docs/UAV and Digital-Twin with AI Intrusion Detection Framework/` | Full technical manual (LaTeX + figures + `main.pdf`) |
+| `papers/` | Paper drafts / figures (optional for code users) |
+| `requirements.txt` | Python dependencies |
+
+</details>
+
+---
+
+<a id="repository-contents"></a>
+## 📦 Repository contents and data release
+
+The public tree is intended to ship **source, documentation, and small reproducibility artefacts**. Large raw captures and secrets are excluded via `.gitignore` and should be published separately (e.g. Zenodo or GitHub Releases) when sharing datasets.
+
+<details>
+<summary><strong>What ships in-repo vs external archives</strong> (click to expand)</summary>
+
+### In-repository (source and docs)
+
+- Application and experiment code: `dashboard/`, `attacks/`, `ids/*.py`, `recorders/`, `scripts/`, `orchestrator.py`, `ssh_control.py`, `mav_common.py`, `build_dataset.py`, `config.py`, `run_dashboard.sh`
+- `requirements.txt`, `README.md`, `CASE_STUDIES.md`, `.gitignore`
+- Technical manual sources under `docs/UAV and Digital-Twin with AI Intrusion Detection Framework/` (`.tex`, `chapters/`, `figures/`, `references.bib`); `main.pdf` optional
+- Dataset documentation: `datasets/DATA_DICTIONARY.md`, `datasets/README.md`, `datasets/runs/.gitkeep`
+- Compact sample matrices when present (e.g. `network_processed_dataset.csv`) and/or a short benign run (`metadata.json` + processed CSVs); otherwise regenerate via the orchestrator or dashboard
+- Lab-specific hosts and credentials via environment variables — not committed secrets
+- IDS artefacts: TinyMAV weights `ids/artifacts/cnn_mav1d.pt` (~40 KB) plus metadata; LightGBM `*.joblib` bundles optional (~8–11 MB) or retrain with `python -m ids`
+- `papers/` only when paper sources are part of the public release
+
+### Excluded or archived externally (see `.gitignore`)
+
+| Path / pattern | Rationale |
+|----------------|-----------|
+| `.venv/`, `__pycache__/`, `*.pyc` | Local install artefacts |
+| `.env`, SSH private keys, `*.pem` | Secrets |
+| `datasets/*_raw_dataset.csv` | Large merged raw matrices (~150–220 MB each) |
+| `datasets/runs/**/*.pcap`, `*_raw.csv` | Per-run captures (~10–200 MB/scenario) |
+| Full `datasets/runs/` tree | Prefer empty tree + regeneration, or a minimal sample |
+| `ids/artifacts/history/`, `fused_1s_dataset.csv` | Regenerable training scratch |
+| OS / editor noise (e.g. `.DS_Store`) | Non-reproducible clutter |
+
+### Typical artefact sizes (lab reference)
+
+| Path | Approx. size | Release guidance |
+|------|--------------|------------------|
+| `datasets/` (full lab tree) | ~1.1 GB | Prefer external archive, not wholesale VCS |
+| `datasets/physical_raw_dataset.csv` | ~153 MB | External archive |
+| `datasets/network_raw_dataset.csv` | ~218 MB | External archive |
+| `datasets/physical_processed_dataset.csv` | ~27 MB | Optional in-repo or release asset |
+| `datasets/network_processed_dataset.csv` | ~276 KB | Suitable in-repo sample |
+| `datasets/runs/` | ~760 MB | Minimal sample or regenerate |
+| `ids/artifacts/` | ~11 MB | CNN weights recommended; joblibs optional |
+| Manual `main.pdf` / `figures/` | ~5 MB / ~16 MB | PDF optional; figures needed to rebuild the handbook |
+
+</details>
+
+---
+
+<a id="prerequisites"></a>
+## 🔧 Prerequisites
+
+### Hardware / topology
+
+| Setup | Notes |
+|-------|--------|
+| **Two PCs (lab default)** | Ubuntu UAV PC = PT (PX4 + Gazebo). Mac or Linux laptop = DT (dashboard, attacks, IDS). Same L2/L3 lab LAN. |
+| **One advanced host** | Possible if Ubuntu runs SITL *and* the Python DT stack; still treat ports and SSH as if split. |
+
+### Software
+
+**Physical Twin (Ubuntu)**
+
+- PX4 Autopilot SITL + Gazebo Classic (lab scripts under `~/uav_cyber_testbed` by default — see `config.TESTBED_DIR`)
+- SSH server; passwordless key auth from the DT host
+- Optional: ROS 2 for educational PT tooling only
+
+**Digital Twin host (macOS or Linux)**
+
+- Python **3.11+** recommended
+- `tcpdump` + ability to `sudo` (network layer capture)
+- Free UDP **14550** during collection (close QGroundControl or rebind it)
+- Browser for `http://127.0.0.1:8000`
+
+---
+
+<a id="quick-start"></a>
+## 🚀 Quick start (beginner path) — first benign mission
+
+Numbered path to a first successful **benign** flight with live DT visualisation.
+
+1. **Clone and enter the repo**
+   ```bash
+   cd /path/to/uav-cyber-ml
+   ```
+
+2. **Create a virtualenv and install dependencies**
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate   # Windows: .venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. **Confirm SSH to the Physical Twin** (defaults; change if needed)
+   ```bash
+   ssh danish@192.168.123.130 echo ok
+   # or: UAV_HOST=… UAV_SSH_USER=… ssh "$UAV_SSH_USER@$UAV_HOST" echo ok
+   ```
+
+4. **Close QGroundControl** (or move it off UDP 14550) so the physical recorder can bind telemetry.
+
+5. **Launch the digital-twin dashboard**
+   ```bash
+   ./run_dashboard.sh
+   # open http://127.0.0.1:8000
+   ```
+   Enter your Mac/Linux password once if prompted so `tcpdump` can capture (skippable: physical-only still works).
+
+6. **Start SITL** from the UI (`Start sim` / PT controls) — Gazebo should appear on the UAV display; the 3D twin should receive telemetry.
+
+7. **Run `benign`** with Mission profile. Watch altitude rise, trail follow the shared plan, and a new folder appear under `datasets/runs/benign/run_NN/`.
+
+8. **Stop** when finished. Optionally build merged CSVs later with `python build_dataset.py`.
+
+> **💡 Beginner tip:** If the twin stays on the ground, check SSH reachability and that Gazebo/`gzclient` is running on the UAV PC before debugging IDS or attacks.
+
+---
+
+<a id="configuration"></a>
+## ⚙️ Configuration
+
+Central file: [`config.py`](config.py). Prefer **environment variables** for lab-specific values so you never commit secrets.
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `UAV_HOST` | `192.168.123.130` | Physical Twin IP |
+| `UAV_SSH_USER` | `danish` | SSH user |
+| `MAV_GATEWAY` | `1` | `0`/`false`/`off` = bypass gateway (direct to PX4; reactive-only) |
+| `MAV_GATEWAY_PORT` | `19550` | Local gateway listen port |
+| `MAV_GATEWAY_HOST` | `127.0.0.1` | Gateway bind host |
+| `NET_IFACE` | auto (`route get`) | tcpdump interface toward UAV |
+| `FLIGHT_PROFILE` | `mission` | `mission` \| `hover` |
+| `DEFENSE_MODE` | `proactive` | `proactive` \| `reactive` \| `hybrid` \| `prevent` \| `soft` |
+| `IDS_PRIMARY_MODEL` | `cnn1d` | `cnn1d` (TinyMAV) or `fusion` (LightGBM cascade) |
+| `DEFENSE_ENGAGE_SCORE` | `0.72` | Score threshold to engage IPS |
+| `DEFENSE_TRUST_MODEL` | `1` | Allow high-confidence engage outside GT windows |
+| `GPS_SPOOF_DRIFT` | `3e-5` | GPS spoof severity (deg/s) |
+| `PIPELINE_SCOPE` | `core` | `core` \| `all` \| … |
+| `PIPELINE_RUNS` | `10` | Suggested runs/scenario for papers |
+| `RUN_DURATION_S`, `ATTACK_AT_S`, `WARMUP_S`, `ATTACK_DUR_S`, … | derived from mission | Timing overrides |
+| `ATTACK_AFTER_WP` | `4` | First eligible attack gate (0-based WP index) |
+| `ATTACK_GATE_FRACTION` | `0.5` | Fraction of mid-mission WPs used as attack gates |
+| `PORT` | `8000` | Dashboard port (`run_dashboard.sh`) |
+
+**SSH keys:** use a normal user keypair with `BatchMode` access to the UAV. Never commit private keys. `ssh_control.py` uses `ssh -o BatchMode=yes`.
+
+---
+
+<a id="running-the-dashboard"></a>
+## 🖥 Running the dashboard
+
+```bash
+./run_dashboard.sh
+# equivalent:
+# PORT=8000 .venv/bin/python -m uvicorn dashboard.server:app --host 127.0.0.1 --port 8000
+```
+
+Open **http://127.0.0.1:8000**.
+
+What you get:
+
+- **3D digital twin** — pose, altitude, armed/mode, trail, mini-map
+- **Scenario controls** — benign + attacks; Mission/Hover; network capture toggle
+- **Live graphs** — physical and network rates; attack banner during injection
+- **Live IDS** — toggle in the top bar; alerts on twin / HUD / score chart / log
+- **Defence** — arm only when trained artefacts are loaded; choose mode in UI/API
+- **Dataset explorer** — browse saved raw/processed CSVs with attack windows shaded
+- **Run log** — orchestrator / pilot / attack / IDS messages over WebSocket
+
+Dashboard runs write the same per-run layout as the CLI (`datasets/runs/<scenario>/run_NN/`).
+
+---
+
+<a id="dataset-generation"></a>
+## 📊 Dataset generation workflow
+
+### CLI
+
+```bash
+# List scenarios
+.venv/bin/python orchestrator.py --list
+
+# Core research matrix (benign + Tier A), N runs each
+.venv/bin/python orchestrator.py --scope core --runs 5
+
+# Physical only (no tcpdump)
+.venv/bin/python orchestrator.py --scope core --runs 5 --no-network
+
+# Explicit subset / quick smoke test
+RUN_DURATION_S=22 ATTACK_AT_S=9 .venv/bin/python orchestrator.py \
+  --scenarios benign,disarm_injection --runs 1
+
+# Include Tier B
+.venv/bin/python orchestrator.py --scope all --runs 1
+```
+
+Each run: restart SITL → record → shared mission (benign or warmup + attack gates) → stop → write:
+
+`physical_raw.csv`, `physical_processed.csv`, `network_raw.csv`, `network_processed.csv`, optional `network_capture.pcap`, `metadata.json`.
+
+### Merge for ML
+
+```bash
+.venv/bin/python build_dataset.py
+```
+
+Outputs under `datasets/`:
+
+- `physical_raw_dataset.csv` / `physical_processed_dataset.csv`
+- `network_raw_dataset.csv` / `network_processed_dataset.csv`
+- `DATA_DICTIONARY.md`
+
+Details: [datasets/README.md](datasets/README.md), [datasets/DATA_DICTIONARY.md](datasets/DATA_DICTIONARY.md).
+
+> **🔬 Advanced note:** Prefer run-wise train/test splits (as `ids.train` does). Do not randomly shuffle rows across time within a run if you care about leakage.
+
+---
+
+<a id="training-the-ids"></a>
+## 🧠 Training the IDS
+
+Train LightGBM cascade **and** TinyMAV 1D-CNN from processed datasets:
+
+```bash
+.venv/bin/python -m ids                 # train → ids/artifacts/
+.venv/bin/python -m ids cnn             # CNN-only path
+.venv/bin/python -m ids score --limit 300   # offline replay
+```
+
+Artefacts include per-modality models (`physical`, `network`, `fusion`), `cnn_mav1d.pt`, metrics JSON, and feature lists.
+
+**Primary model** defaults to TinyMAV (`IDS_PRIMARY_MODEL=cnn1d`). Set `IDS_PRIMARY_MODEL=fusion` to prefer the LightGBM cascade for live detect/defend.
+
+Live training / reload is also available from the dashboard (`/api/train`) when you collect new runs.
+
+---
+
+<a id="attack-scenarios"></a>
+## ⚔️ Attack scenarios
+
+See [CASE_STUDIES.md](CASE_STUDIES.md) for hypotheses and P/N/T (Physical / Network / Twin) effects.
+
+<details open>
+<summary><strong>Tier A — core pipeline</strong> (<code>--scope core</code>)</summary>
+
+| ID | Brief |
+|----|--------|
+| `benign` | Shared multi-waypoint OFFBOARD mission (negative class) |
+| `gps_spoofing` | Drifting `GPS_INPUT` bias mid-mission |
+| `disarm_injection` | Force-DISARM in flight (motors cut) |
+| `mode_change_land` | Hijack to `AUTO.LAND` |
+| `mission_injection` | Rogue mission upload + `AUTO.MISSION` |
+| `command_flood_dos` | Flood `COMMAND_LONG` + heartbeats |
+| `rc_override` | Stick hijack via `MANUAL_CONTROL` |
+| `param_injection` | Malicious `PARAM_SET` on failsafe-related params |
+
+</details>
+
+<details>
+<summary><strong>Tier B — supporting</strong> (<code>--scope all</code>)</summary>
+
+| ID | Brief |
+|----|--------|
+| `mode_change_rtl` | Mode hijack to `AUTO.RTL` |
+| `heartbeat_spoof` | Conflicting GCS heartbeats (strong N, weak P) |
+| `takeoff_injection` | Unauthorized arm + `AUTO.TAKEOFF` |
+
+</details>
+
+---
+
+<a id="defence-modes"></a>
+## 🛡 Defence modes
+
+Configured by `DEFENSE_MODE` (env / `config.py` / dashboard API). Defence engages only when a **trained model is loaded** and the operator enables Defence.
+
+| Mode | Behaviour | When to use |
+|------|-----------|-------------|
+| **proactive** | Gateway drops dangerous attacker MAVLink/GPS **before** PX4; default lab mode | Measure pre-UAV prevention; minimise physical effect |
+| **reactive** | Forward all traffic; IDS detects then **reclaim** (abort injector, OFFBOARD hold, re-arm/mode restore) | Study detect → recover latency and residual damage |
+| **hybrid** (alias **prevent**) | Proactive drops **plus** reactive reclaim fallback | Recommended closed-loop defence evaluation |
+| **soft** | Short reactive reclaim only | Mild recover without long prevent hold |
+
+Supporting knobs: `DEFENSE_SIGNATURE_GRACE_S` (brief window so IDS still sees a signature), `DEFENSE_PREVENT_HOLD_S`, `DEFENSE_ENGAGE_SCORE`, `DEFENSE_TRUST_MODEL`.
+
+```bash
+# Example: hybrid defence with CNN primary
+DEFENSE_MODE=hybrid IDS_PRIMARY_MODEL=cnn1d ./run_dashboard.sh
+
+# Bypass gateway entirely (direct udpout; reactive-only path)
+MAV_GATEWAY=0 DEFENSE_MODE=reactive ./run_dashboard.sh
+```
+
+Detection-only: leave Defence unchecked — IDS alerts without touching the vehicle.
+
+---
+
+<a id="technical-manual"></a>
+## 📚 Technical manual
+
+**Canonical path:**
+
+```
+docs/UAV and Digital-Twin with AI Intrusion Detection Framework/
+```
+
+| Content | Role |
+|---------|------|
+| `main.tex` | Master file |
+| `preamble.tex`, `references.bib` | Style + bibliography source |
+| `chapters/` | Phases 1–3 chapters (PT setup, DT ops, IDS/defence) |
+| `figures/` | Screenshots and diagrams |
+| `main.pdf` | Prebuilt PDF (optional; rebuild from sources as needed) |
+| `README.md` | Build notes for the handbook |
+
+**Phases:** (1) Ubuntu UAV workstation — PX4, Gazebo, optional ROS 2; (2) Operational DT — dashboard, recorders, scenarios; (3) TinyMAV + LightGBM, proactive/hybrid/reactive defence.
+
+<details>
+<summary><strong>Compile PDF</strong> (optional — not required to run the stack)</summary>
+
+```bash
+cd "docs/UAV and Digital-Twin with AI Intrusion Detection Framework"
+
+tectonic main.tex
+# or: latexmk -pdf -interaction=nonstopmode main.tex
+
+open main.pdf   # macOS
+```
+
+</details>
+
+---
+
+<a id="research-use-cases"></a>
+## 🔬 Research use cases / suggested experiments
+
+1. **Baseline fingerprints** — ≥10 benign runs; report physical stability and network baselines on the shared plan.
+2. **Tier A matrix** — `orchestrator.py --scope core --runs 10`; build dataset; train IDS; report precision/recall/F1/FPR and mean detection delay.
+3. **Defence ablation** — same attack set under `proactive` vs `reactive` vs `hybrid`; compare proactive block counts, mitigation delay, mission resume success (`datasets/paper_live_metrics.json` / dashboard metrics).
+4. **GPS severity ladder** — vary `GPS_SPOOF_DRIFT` (`3e-6` / `1e-5` / `5e-5`); measure path error and DT–PT residual.
+5. **Modality study** — physical-only vs network-only vs fusion vs `cnn1d` primary.
+6. **Gateway off** — `MAV_GATEWAY=0` to quantify sticky-peer / reclaim-only behaviour.
+7. **Tier B appendix** — heartbeat spoof and takeoff for multiclass / phase-aware papers.
+8. **Extension ideas** — telemetry FDI, replay/delay, selective drop, combined GPS+DoS (Tier C in CASE_STUDIES — not implemented yet).
+
+---
+
+<a id="troubleshooting"></a>
+## 🩹 Troubleshooting
+
+| Symptom | Likely cause / fix |
+|---------|-------------------|
+| SSH / “Physical Twin unreachable” | Wrong LAN, host down, or key auth. Check `UAV_HOST` / `UAV_SSH_USER`. |
+| Twin frozen / no telemetry | Port **14550** held by QGroundControl; close it or rebind. Confirm SITL is up. |
+| No Gazebo window on UAV | `gzserver` without `gzclient` — dashboard Start sim / `ssh_control.ensure_gzclient` should start GUI on `DISPLAY=:0`. |
+| Network CSV / pcap empty | `sudo` not primed; use `./run_dashboard.sh` or CLI password prompt; or run with `--no-network`. |
+| tcpdump on wrong iface | Set `NET_IFACE=en0` (or your LAN NIC). |
+| Attacks do nothing | Gateway/defence dropping early; try `DEFENSE_MODE=reactive` with Defence off for clean labels. Verify attacker reaches PX4. |
+| Defence stays OFF | No trained artefacts — run `python -m ids` or dashboard Train; Defence requires `model_available`. |
+| IDS never loads CNN | Missing `ids/artifacts/cnn_mav1d.pt` — train with `python -m ids` / `python -m ids cnn`. |
+| Permission errors on capture | Grant tcpdump/`sudo` or disable network capture. |
+| Import / torch install issues | Use the project `.venv`; on Apple Silicon prefer official PyTorch wheels matching your Python. |
+
+---
+
+<a id="citation--license"></a>
+## 📄 Citation / license
+
+If you use this cyber-range or datasets in a publication, please cite your lab paper / technical report once published, and acknowledge the PX4, Gazebo, MAVLink, and pymavlink communities.
+
+```bibtex
+@misc{uav_cyber_digital_twin,
+  title        = {UAV Cyber Digital Twin: MAVLink Attacks, AI IDS, and Closed-Loop Defence},
+  author       = {{Your Lab}},
+  year         = {2026},
+  howpublished = {GitHub repository},
+  note         = {PX4/Gazebo SITL physical twin + FastAPI/Three.js digital twin}
+}
+```
+
+**License:** Research code pending an explicit `LICENSE` (e.g. MIT or Apache-2.0 for software; separate terms for datasets if required). Contact the authors for reuse until terms are published.
+
+---
+
+<a id="acknowledgements"></a>
+## 🙏 Acknowledgements
+
+- [PX4 Autopilot](https://px4.io/) and Gazebo Classic SITL ecosystem  
+- [MAVLink](https://mavlink.io/) / [pymavlink](https://github.com/ArduPilot/pymavlink)  
+- FastAPI, Uvicorn, Three.js, PyTorch, LightGBM, scikit-learn, pandas, scapy, Paramiko  
+- Lab operators and students who validated live attack and defence scenarios  
+
+For case-study hypotheses and defence mapping, start with [CASE_STUDIES.md](CASE_STUDIES.md). For step-by-step PT provisioning and deeper architecture, use the [technical manual](docs/UAV%20and%20Digital-Twin%20with%20AI%20Intrusion%20Detection%20Framework/).
