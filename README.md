@@ -561,17 +561,7 @@ open main.pdf   # macOS
 <a id="citation--license"></a>
 ## 📄 Citation / license
 
-If you use this cyber-range or datasets in a publication, please cite your lab paper / technical report once published, and acknowledge the PX4, Gazebo, MAVLink, and pymavlink communities.
-
-```bibtex
-@misc{uav_cyber_digital_twin,
-  title        = {UAV Cyber Digital Twin: MAVLink Attacks, AI IDS, and Closed-Loop Defence},
-  author       = {{Your Lab}},
-  year         = {2026},
-  howpublished = {GitHub repository},
-  note         = {PX4/Gazebo SITL physical twin + FastAPI/Three.js digital twin}
-}
-```
+The associated research article is **in preparation / forthcoming** and has not yet been published. A formal citation (BibTeX / APA) will be added here once the paper is available. In the meantime, if you use this software or dataset, please cite this repository and optionally contact the authors for the preferred citation. Please also acknowledge the PX4, Gazebo, MAVLink, and pymavlink communities.
 
 **License:** Research code pending an explicit `LICENSE` (e.g. MIT or Apache-2.0 for software; separate terms for datasets if required). Contact the authors for reuse until terms are published.
 
