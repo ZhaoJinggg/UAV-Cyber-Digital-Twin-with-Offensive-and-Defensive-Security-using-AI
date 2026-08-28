@@ -43,18 +43,29 @@ def _detect_iface(host: str) -> str:
 
     macOS tcpdump does not reliably support ``-i any`` (BPF-based capture),
     so we resolve the concrete interface (e.g. ``en0``) toward the UAV host.
+    Linux (including WSL2) uses ``ip route get`` instead of BSD ``route get``.
     """
+    import platform
     import subprocess
+    system = platform.system()
     try:
-        out = subprocess.run(["route", "get", host], capture_output=True,
-                             text=True, timeout=3).stdout
-        for line in out.splitlines():
-            line = line.strip()
-            if line.startswith("interface:"):
-                return line.split(":", 1)[1].strip()
+        if system == "Linux":
+            out = subprocess.run(["ip", "route", "get", host], capture_output=True,
+                                 text=True, timeout=3).stdout
+            for line in out.splitlines():
+                tokens = line.split()
+                if "dev" in tokens:
+                    return tokens[tokens.index("dev") + 1]
+        else:
+            out = subprocess.run(["route", "get", host], capture_output=True,
+                                 text=True, timeout=3).stdout
+            for line in out.splitlines():
+                line = line.strip()
+                if line.startswith("interface:"):
+                    return line.split(":", 1)[1].strip()
     except Exception:
         pass
-    return "en0"
+    return "eth0" if system == "Linux" else "en0"
 
 
 # tcpdump interface on the Mac (auto-detected toward the UAV; override via env)

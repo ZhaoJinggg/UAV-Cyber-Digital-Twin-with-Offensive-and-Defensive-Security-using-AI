@@ -25,7 +25,7 @@ printf '%s\n' "$RULE" > "$TMP"
 
 # Validate syntax before installing, then install with strict perms.
 if sudo visudo -cf "$TMP" >/dev/null; then
-  sudo install -m 0440 -o root -g wheel "$TMP" "$SUDOERS_FILE"
+  sudo install -m 0440 -o root -g 0 "$TMP" "$SUDOERS_FILE"
   rm -f "$TMP"
   echo "==> Installed. Verifying passwordless tcpdump…"
   if sudo -n "$TCPDUMP_BIN" --version >/dev/null 2>&1; then
