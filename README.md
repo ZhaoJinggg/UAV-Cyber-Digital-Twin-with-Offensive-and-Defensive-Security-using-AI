@@ -59,7 +59,7 @@ MAVLink (via **pymavlink**) is the operational control and telemetry path. **ROS
 - **Synchronised PT ↔ DT loop** — live 3D twin, HUD, trails, and graphs driven by real PX4 telemetry (`:14550`), while Gazebo on the UAV PC remains the physical visualisation.
 - **Shared-mission protocol** — every scenario (benign and attack) flies the same multi-waypoint OFFBOARD plan so pre/post windows are comparable; only the attack window is labeled as attack.
 - **Two-layer labeled datasets** — physical (flight state) and network (MAVLink traffic), each in raw + processed form, with run metadata and a data dictionary.
-- **Attack taxonomy** — Tier A core case studies + Tier B supporting classes (see [CASE_STUDIES.md](CASE_STUDIES.md)).
+- **Attack taxonomy** — Tier A core case studies + Tier B supporting classes (see [CASE_STUDIES.md](uav-cyber-ml/CASE_STUDIES.md)).
 - **AI IDS** — primary **TinyMAV 1D-CNN** (`cnn1d`) with optional **LightGBM** physical / network / fusion cascade; live scoring in the dashboard.
 - **Closed-loop defence** — Mac-local MAVLink **gateway** (`:19550`) for pre-PX4 drops (**proactive**), post-detect reclaim (**reactive**), or both (**hybrid**).
 - **End-to-end orchestration** — SSH start/stop of SITL, one-click dashboard scenarios, or CLI matrix runs via `orchestrator.py`.
@@ -120,46 +120,59 @@ IDS + IPS   ──► drop at gateway and/or reclaim control
 <a id="repository-layout"></a>
 ## 📁 Repository layout
 
+**All Python code lives in the `uav-cyber-ml/` subdirectory.** Run every command
+below from inside that folder, not from the repository root.
+
 ```
-uav-cyber-ml/
+<repo root>/
 ├── README.md                 # this file (canonical project README)
-├── CASE_STUDIES.md           # attack hypotheses, P/N/T effects, defence mapping
-├── requirements.txt
-├── run_dashboard.sh          # launch dashboard (primes sudo for tcpdump)
-├── config.py                 # hosts, ports, mission plan, IDS/defence defaults
-├── orchestrator.py           # CLI master runner: SITL, record, attack, label
-├── ssh_control.py            # passwordless SSH start/stop/monitor of PX4 SITL
-├── mav_common.py             # shared pymavlink GCS helpers, vehicle state, abort
-├── build_dataset.py          # merge datasets/runs/ → labeled CSVs + dictionary
-├── attacks/                  # benign pilot + attack suite
-│   ├── benign.py
-│   └── suite.py              # Tier A / Tier B attack registry
-├── recorders/
-│   ├── physical_recorder.py
-│   ├── network_recorder.py
-│   ├── twin_bridge.py
-│   └── live_network.py
-├── dashboard/                # FastAPI + Three.js digital twin UI
-│   ├── server.py
-│   ├── datasets.py
-│   └── static/               # index.html, app.js, app.css
-├── ids/                      # TinyMAV CNN + LightGBM cascade, gateway, defence
-│   ├── __main__.py           # python -m ids
-│   ├── train.py / cnn_*.py
-│   ├── mav_gateway.py / defense.py / live_*.py
-│   └── artifacts/            # cnn_mav1d.pt, *.joblib, metrics (regenerable)
-├── datasets/                 # see datasets/README.md
-│   └── DATA_DICTIONARY.md
-├── scripts/
-│   └── enable_network_capture.sh
-├── Docs/
-│   └── Manual
+├── Manual.pdf                # technical manual (prebuilt PDF)
+└── uav-cyber-ml/             # ← the runnable project; cd here first
+    ├── CASE_STUDIES.md       # attack hypotheses, P/N/T effects, defence mapping
+    ├── requirements.txt
+    ├── run_dashboard.sh      # launch dashboard (primes sudo for tcpdump)
+    ├── config.py             # hosts, ports, mission plan, IDS/defence defaults
+    ├── orchestrator.py       # CLI master runner: SITL, record, attack, label
+    ├── ssh_control.py        # passwordless SSH start/stop/monitor of PX4 SITL
+    ├── mav_common.py         # shared pymavlink GCS helpers, vehicle state, abort
+    ├── build_dataset.py      # merge datasets/runs/ → labeled CSVs + dictionary
+    ├── attacks/              # benign pilot + attack suite
+    │   ├── __init__.py
+    │   ├── benign.py         # BenignPilot: shared mission, attack gates
+    │   └── suite.py          # Tier A / Tier B attack registry
+    ├── recorders/
+    │   ├── physical_recorder.py
+    │   ├── network_recorder.py
+    │   ├── twin_bridge.py
+    │   └── live_network.py
+    ├── dashboard/            # FastAPI + Three.js digital twin UI
+    │   ├── server.py
+    │   ├── datasets.py
+    │   └── static/           # index.html, app.js, app.css
+    ├── ids/                  # TinyMAV CNN + LightGBM cascade, gateway, defence
+    │   ├── __main__.py       # python -m ids
+    │   ├── train.py / cnn_*.py
+    │   ├── mav_gateway.py / defense.py / live_*.py
+    │   └── artifacts/        # cnn_mav1d.pt, *.joblib, metrics (regenerable)
+    ├── datasets/             # see datasets/README.md
+    │   ├── DATA_DICTIONARY.md
+    │   └── runs/             # populated by the orchestrator / dashboard
+    ├── scripts/
+    │   └── enable_network_capture.sh
+    └── Doc/
+        └── Manual.pdf        # same technical manual, alongside the code
 ```
 
-> The technical manual lives at `docs/UAV and Digital-Twin with AI Intrusion Detection Framework/` (exact folder name). There is no `docs/technical_manual/` alias in this tree.
+> **Documentation in this release.** The technical manual ships as a prebuilt
+> **`Manual.pdf`** (repo root and `uav-cyber-ml/Doc/`). The LaTeX sources
+> (`main.tex`, `chapters/`, `figures/`, `references.bib`) and the `papers/`
+> drafts are **not** part of this public release — they are kept in the authors'
+> private tree. Nothing in the runnable stack depends on them.
 
 <details>
 <summary><strong>Path → purpose quick reference</strong></summary>
+
+Paths are relative to `uav-cyber-ml/`.
 
 | Path | Purpose |
 |------|---------|
@@ -173,12 +186,11 @@ uav-cyber-ml/
 | `dashboard/` | FastAPI app + Three.js static UI (`dashboard/static/`) |
 | `ids/` | Training, TinyMAV CNN, LightGBM, live bridge, gateway, defence |
 | `ids/artifacts/` | Trained models and metrics (regenerable) |
-| `datasets/` | Per-run recordings and merged matrices — see [datasets/README.md](datasets/README.md) |
+| `datasets/` | Per-run recordings and merged matrices — see [datasets/README.md](uav-cyber-ml/datasets/README.md) |
 | `scripts/enable_network_capture.sh` | Helper to enable network-layer capture |
 | `run_dashboard.sh` | Launch dashboard (primes `sudo` for tcpdump) |
 | `CASE_STUDIES.md` | Hypotheses, P/N/T effects, defence mapping |
-| `docs/UAV and Digital-Twin with AI Intrusion Detection Framework/` | Full technical manual (LaTeX + figures + `main.pdf`) |
-| `papers/` | Paper drafts / figures (optional for code users) |
+| `Doc/Manual.pdf` | Full technical manual (prebuilt PDF; also at the repo root) |
 | `requirements.txt` | Python dependencies |
 
 </details>
@@ -197,12 +209,19 @@ The public tree is intended to ship **source, documentation, and small reproduci
 
 - Application and experiment code: `dashboard/`, `attacks/`, `ids/*.py`, `recorders/`, `scripts/`, `orchestrator.py`, `ssh_control.py`, `mav_common.py`, `build_dataset.py`, `config.py`, `run_dashboard.sh`
 - `requirements.txt`, `README.md`, `CASE_STUDIES.md`, `.gitignore`
-- Technical manual sources under `docs/UAV and Digital-Twin with AI Intrusion Detection Framework/` (`.tex`, `chapters/`, `figures/`, `references.bib`); `main.pdf` optional
+- Technical manual as a prebuilt PDF: `Manual.pdf` (repo root) and `uav-cyber-ml/Doc/Manual.pdf`. LaTeX sources and `papers/` drafts are not in this release.
 - Dataset documentation: `datasets/DATA_DICTIONARY.md`, `datasets/README.md`, `datasets/runs/.gitkeep`
-- Compact sample matrices when present (e.g. `network_processed_dataset.csv`) and/or a short benign run (`metadata.json` + processed CSVs); otherwise regenerate via the orchestrator or dashboard
-- Lab-specific hosts and credentials via environment variables — not committed secrets
-- IDS artefacts: TinyMAV weights `ids/artifacts/cnn_mav1d.pt` (~40 KB) plus metadata; LightGBM `*.joblib` bundles optional (~8–11 MB) or retrain with `python -m ids`
-- `papers/` only when paper sources are part of the public release
+- IDS artefacts: TinyMAV weights `ids/artifacts/cnn_mav1d.pt` (~40 KB) plus metadata, and the LightGBM `*.joblib` bundles (~8 MB total), so live scoring and defence work on a fresh clone without retraining
+
+> **⚠️ No dataset CSVs ship with this release.** `datasets/runs/` is empty and the
+> merged `*_processed_dataset.csv` matrices are not committed, so
+> **`python -m ids` cannot retrain on a fresh clone** — it exits with
+> `FileNotFoundError: … datasets/physical_processed_dataset.csv`.
+> This is expected. Either use the pretrained artefacts already in
+> `ids/artifacts/`, or generate your own data first
+> (`python orchestrator.py --scope core --runs 5` → `python build_dataset.py`),
+> which requires a working PX4 SITL Physical Twin. See
+> [Dataset generation](#dataset-generation).
 
 ### Excluded or archived externally (see `.gitignore`)
 
@@ -227,7 +246,7 @@ The public tree is intended to ship **source, documentation, and small reproduci
 | `datasets/network_processed_dataset.csv` | ~276 KB | Suitable in-repo sample |
 | `datasets/runs/` | ~760 MB | Minimal sample or regenerate |
 | `ids/artifacts/` | ~11 MB | CNN weights recommended; joblibs optional |
-| Manual `main.pdf` / `figures/` | ~5 MB / ~16 MB | PDF optional; figures needed to rebuild the handbook |
+| `Manual.pdf` | ~5 MB | Shipped in-repo (root + `uav-cyber-ml/Doc/`) |
 
 </details>
 
@@ -265,9 +284,14 @@ The public tree is intended to ship **source, documentation, and small reproduci
 
 Numbered path to a first successful **benign** flight with live DT visualisation.
 
-1. **Clone and enter the repo**
+1. **Clone and enter the project directory**
+
+   The code lives in the `uav-cyber-ml/` subfolder — you must `cd` into it, or
+   Python will not find the `attacks`, `ids`, and `dashboard` packages.
+
    ```bash
-   cd /path/to/uav-cyber-ml
+   git clone https://github.com/<your-user>/UAV-Cyber-Digital-Twin-with-Offensive-and-Defensive-Security-using-AI.git
+   cd UAV-Cyber-Digital-Twin-with-Offensive-and-Defensive-Security-using-AI/uav-cyber-ml
    ```
 
 2. **Create a virtualenv and install dependencies**
@@ -305,7 +329,7 @@ Numbered path to a first successful **benign** flight with live DT visualisation
 <a id="configuration"></a>
 ## ⚙️ Configuration
 
-Central file: [`config.py`](config.py). Prefer **environment variables** for lab-specific values so you never commit secrets.
+Central file: [`config.py`](uav-cyber-ml/config.py). Prefer **environment variables** for lab-specific values so you never commit secrets.
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
@@ -396,7 +420,7 @@ Outputs under `datasets/`:
 - `network_raw_dataset.csv` / `network_processed_dataset.csv`
 - `DATA_DICTIONARY.md`
 
-Details: [datasets/README.md](datasets/README.md), [datasets/DATA_DICTIONARY.md](datasets/DATA_DICTIONARY.md).
+Details: [datasets/README.md](uav-cyber-ml/datasets/README.md), [datasets/DATA_DICTIONARY.md](uav-cyber-ml/datasets/DATA_DICTIONARY.md).
 
 > **🔬 Advanced note:** Prefer run-wise train/test splits (as `ids.train` does). Do not randomly shuffle rows across time within a run if you care about leakage.
 
@@ -404,6 +428,12 @@ Details: [datasets/README.md](datasets/README.md), [datasets/DATA_DICTIONARY.md]
 
 <a id="training-the-ids"></a>
 ## 🧠 Training the IDS
+
+> **Prerequisite:** training reads `datasets/physical_processed_dataset.csv` and
+> `datasets/network_processed_dataset.csv`. **Neither ships with the repo**, so
+> you must run [dataset generation](#dataset-generation) first (which needs a
+> live PX4 SITL Physical Twin). Pretrained artefacts are already in
+> `ids/artifacts/` if you only want to run live scoring and defence.
 
 Train LightGBM cascade **and** TinyMAV 1D-CNN from processed datasets:
 
@@ -424,7 +454,7 @@ Live training / reload is also available from the dashboard (`/api/train`) when 
 <a id="attack-scenarios"></a>
 ## ⚔️ Attack scenarios
 
-See [CASE_STUDIES.md](CASE_STUDIES.md) for hypotheses and P/N/T (Physical / Network / Twin) effects.
+See [CASE_STUDIES.md](uav-cyber-ml/CASE_STUDIES.md) for hypotheses and P/N/T (Physical / Network / Twin) effects.
 
 <details open>
 <summary><strong>Tier A — core pipeline</strong> (<code>--scope core</code>)</summary>
@@ -484,36 +514,22 @@ Detection-only: leave Defence unchecked — IDS alerts without touching the vehi
 <a id="technical-manual"></a>
 ## 📚 Technical manual
 
-**Canonical path:**
+The manual ships as a **prebuilt PDF** in two places (identical file):
 
-```
-docs/UAV and Digital-Twin with AI Intrusion Detection Framework/
-```
+| Path | Notes |
+|------|-------|
+| `Manual.pdf` | Repository root — easiest to find on GitHub |
+| `uav-cyber-ml/Doc/Manual.pdf` | Alongside the code |
 
-| Content | Role |
-|---------|------|
-| `main.tex` | Master file |
-| `preamble.tex`, `references.bib` | Style + bibliography source |
-| `chapters/` | Phases 1–3 chapters (PT setup, DT ops, IDS/defence) |
-| `figures/` | Screenshots and diagrams |
-| `main.pdf` | Prebuilt PDF (optional; rebuild from sources as needed) |
-| `README.md` | Build notes for the handbook |
+```bash
+open Manual.pdf            # macOS
+# xdg-open Manual.pdf      # Linux
+```
 
 **Phases:** (1) Ubuntu UAV workstation — PX4, Gazebo, optional ROS 2; (2) Operational DT — dashboard, recorders, scenarios; (3) TinyMAV + LightGBM, proactive/hybrid/reactive defence.
 
-<details>
-<summary><strong>Compile PDF</strong> (optional — not required to run the stack)</summary>
-
-```bash
-cd "Docs/Manual.pdf"
-
-tectonic main.tex
-# or: latexmk -pdf -interaction=nonstopmode main.tex
-
-open main.pdf   # macOS
-```
-
-</details>
+> The LaTeX sources for the manual are not part of this public release, so there
+> is nothing to compile — read the PDF directly.
 
 ---
 
@@ -536,6 +552,8 @@ open main.pdf   # macOS
 
 | Symptom | Likely cause / fix |
 |---------|-------------------|
+| `ModuleNotFoundError: No module named 'attacks'` (also `ids`, `dashboard`, `config`) | You are in the wrong directory. All packages are inside `uav-cyber-ml/` — run `cd uav-cyber-ml` first. Every command in this README assumes that working directory. |
+| `FileNotFoundError: … datasets/physical_processed_dataset.csv` on `python -m ids` | Expected: no dataset CSVs ship with the repo. Use the pretrained models already in `ids/artifacts/`, or record your own runs first (`python orchestrator.py --scope core --runs 5` then `python build_dataset.py`). |
 | SSH / “Physical Twin unreachable” | Wrong LAN, host down, or key auth. Check `UAV_HOST` / `UAV_SSH_USER`. |
 | Twin frozen / no telemetry | Port **14550** held by QGroundControl; close it or rebind. Confirm SITL is up. |
 | No Gazebo window on UAV | `gzserver` without `gzclient` — dashboard Start sim / `ssh_control.ensure_gzclient` should start GUI on `DISPLAY=:0`. |
@@ -566,4 +584,4 @@ The associated research article is **in preparation / forthcoming** and has not 
 - FastAPI, Uvicorn, Three.js, PyTorch, LightGBM, scikit-learn, pandas, scapy, Paramiko  
 - Lab operators and students who validated live attack and defence scenarios  
 
-For case-study hypotheses and defence mapping, start with [CASE_STUDIES.md](CASE_STUDIES.md). For step-by-step PT provisioning and deeper architecture, use the [technical manual](docs/UAV%20and%20Digital-Twin%20with%20AI%20Intrusion%20Detection%20Framework/).
+For case-study hypotheses and defence mapping, start with [CASE_STUDIES.md](uav-cyber-ml/CASE_STUDIES.md). For step-by-step PT provisioning and deeper architecture, read the [technical manual](Manual.pdf).

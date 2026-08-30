@@ -1,7 +1,9 @@
 # UAV Cyber Digital Twin — Case Study Sheet
 
 Research lab: **PX4 Gazebo SITL (Physical Twin)** ↔ **Mac CDT dashboard (Digital Twin)**  
-Protocol: one **shared multi-waypoint mission**; attacks inject **after WP2**; pre/post labeled **benign**.
+Protocol: one **shared multi-waypoint mission**; attacks inject at randomly chosen
+mid-mission gates (earliest is after `ATTACK_AFTER_WP`, default **WP4**); pre/post
+windows are labeled **benign**.
 
 ## Research claim
 
@@ -16,7 +18,7 @@ physical, network, and twin observations on an identical flight plan.
 | 1 | Start warm SITL at home `(0,0)` (or reset) |
 | 2 | Record physical (14550) + network (tcpdump) |
 | 3 | Fly shared `MISSION_PLAN` OFFBOARD |
-| 4 | **Attacks only:** freeze after `ATTACK_AFTER_WP`, inject `ATTACK_DUR_S`, resume |
+| 4 | **Attacks only:** at each scheduled gate (~`ATTACK_GATE_FRACTION` of eligible WPs), inject `ATTACK_DUR_S`, then resume |
 | 5 | Land, disarm, reset home; twin follows throughout |
 | 6 | Labels: `normal_plan` vs `attack`; pre/post = `benign` |
 
@@ -52,7 +54,8 @@ physical, network, and twin observations on an identical flight plan.
 | Level | `GPS_SPOOF_DRIFT` | Intent |
 |-------|-------------------|--------|
 | Low | `3e-6` | Subtle bias |
-| Med (default) | `1e-5` | Clear path error |
+| Med | `1e-5` | Clear path error |
+| Default | `3e-5` | Repo default (`config.GPS_SPOOF_DRIFT`) |
 | High | `5e-5` | Aggressive drift |
 
 ```bash

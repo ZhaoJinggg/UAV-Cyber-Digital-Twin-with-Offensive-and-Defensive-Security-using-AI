@@ -1,0 +1,97 @@
+# --- Python ---
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Secrets & local env ---
+.env
+.env.*
+!.env.example
+*.pem
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.key
+secrets/
+credentials.json
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# --- Logs & temp ---
+*.log
+logs/
+tmp/
+temp/
+.cache/
+
+# --- Captures & large experiment artefacts ---
+# Per-run raw captures are large; keep folder structure via .gitkeep.
+datasets/runs/**/*.pcap
+datasets/runs/**/*_raw.csv
+datasets/runs/**/network_capture.pcap
+
+# Combined raw matrices (often 100MB–GB). Prefer Zenodo / release assets.
+datasets/*_raw_dataset.csv
+datasets/physical_raw_dataset.csv
+datasets/network_raw_dataset.csv
+
+# Optional: uncomment if physical_processed also exceeds GitHub soft limits (~27MB here)
+# datasets/physical_processed_dataset.csv
+
+# Keep small processed / docs tracked by default:
+#   datasets/DATA_DICTIONARY.md
+#   datasets/network_processed_dataset.csv
+#   datasets/paper_live_metrics.json
+#   datasets/runs/<scenario>/run_XX/metadata.json
+#   datasets/runs/<scenario>/run_XX/*_processed.csv  (moderate size)
+
+# IDS training scratch / history (regenerable)
+ids/artifacts/history/
+ids/artifacts/fused_1s_dataset.csv
+ids/artifacts/*.tmp
+
+# Model weights: TinyMAV CNN (~40KB) is fine to commit.
+# Large LightGBM multiclass bundles (~2MB each) are optional — leave tracked
+# unless your org prefers regenerating via `python -m ids`. Uncomment to exclude:
+# ids/artifacts/*_multiclass.joblib
+# ids/artifacts/*_binary.joblib
+
+# --- LaTeX build debris (keep main.pdf optional; figures + .tex stay) ---
+docs/**/*.aux
+docs/**/*.bbl
+docs/**/*.blg
+docs/**/*.fdb_latexmk
+docs/**/*.fls
+docs/**/*.out
+docs/**/*.synctex.gz
+docs/**/*.toc
+docs/**/*.lof
+docs/**/*.lot
+docs/**/_minted*/
+
+# --- Papers scratch (if regenerating figures locally) ---
+papers/**/*.aux
+papers/**/*.log
+papers/**/*.out
+papers/**/*.synctex.gz

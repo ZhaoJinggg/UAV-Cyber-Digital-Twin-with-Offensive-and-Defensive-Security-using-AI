@@ -1,0 +1,31 @@
+# Repository-root ignores.
+# The main ignore rules live in uav-cyber-ml/.gitignore (paths there are
+# relative to that folder, which is the actual project root).
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# --- Python (belt-and-braces; also covered in uav-cyber-ml/.gitignore) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.key
