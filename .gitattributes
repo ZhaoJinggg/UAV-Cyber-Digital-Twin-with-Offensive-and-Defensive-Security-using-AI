@@ -1,0 +1,4 @@
+# Shell scripts must keep LF endings regardless of the OS they are edited on.
+# CRLF in a script breaks its shebang on every Unix host: `#!/usr/bin/env bash\r`
+# makes env look for a command literally named "bash\r".
+*.sh text eol=lf
