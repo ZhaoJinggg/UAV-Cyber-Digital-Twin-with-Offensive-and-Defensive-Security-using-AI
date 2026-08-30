@@ -27,29 +27,90 @@ A research cyber-range coupling a **Physical Twin** (PX4 + Gazebo SITL) with a *
 
 ## Table of contents
 
-1. [Features / research contributions](#features)
-2. [Architecture overview](#architecture-overview)
-3. [Repository layout](#repository-layout)
-4. [Repository contents and data release](#repository-contents)
-5. [Prerequisites](#prerequisites)
-6. [Quick start (beginner path)](#quick-start)
-7. [Configuration](#configuration)
-8. [Running the dashboard](#running-the-dashboard)
-9. [Dataset generation workflow](#dataset-generation)
-10. [Training the IDS](#training-the-ids)
-11. [Attack scenarios](#attack-scenarios)
-12. [Defence modes](#defence-modes)
-13. [Technical manual](#technical-manual)
-14. [Research use cases](#research-use-cases)
-15. [Troubleshooting](#troubleshooting)
-16. [Citation / license](#citation--license)
-17. [Acknowledgements](#acknowledgements)
+1. [⚡ TL;DR — clone to flying twin](#tldr)
+2. [Features / research contributions](#features)
+3. [Architecture overview](#architecture-overview)
+4. [Repository layout](#repository-layout)
+5. [Repository contents and data release](#repository-contents)
+6. [Prerequisites](#prerequisites)
+7. [Quick start (beginner path)](#quick-start)
+8. [Configuration](#configuration)
+9. [Running the dashboard](#running-the-dashboard)
+10. [Dataset generation workflow](#dataset-generation)
+11. [Training the IDS](#training-the-ids)
+12. [Attack scenarios](#attack-scenarios)
+13. [Defence modes](#defence-modes)
+14. [Technical manual](#technical-manual)
+15. [Research use cases](#research-use-cases)
+16. [Troubleshooting](#troubleshooting)
+17. [Citation / license](#citation--license)
+18. [Acknowledgements](#acknowledgements)
 
 ---
 
 A research cyber-range that couples a **Physical Twin (PT)** — PX4 Autopilot + Gazebo SITL on an Ubuntu UAV workstation — with a **Cyber Digital Twin (DT)** — FastAPI + Three.js dashboard on a Mac or Linux host. From the DT you fly a shared multi-waypoint mission, inject **MAVLink cyber–physical attacks**, record **aligned physical and network datasets**, train a lightweight **AI intrusion detection system** (TinyMAV 1D-CNN + LightGBM cascade), and evaluate **proactive / reactive / hybrid** defence through a local MAVLink gateway.
 
 MAVLink (via **pymavlink**) is the operational control and telemetry path. **ROS 2 is optional and educational** (see the technical manual Phase 1); it is **not required** to run DT scenarios, dataset collection, IDS, or defence.
+
+---
+
+<a id="tldr"></a>
+## ⚡ TL;DR — from clone to a flying twin
+
+You need **two machines on the same LAN**: an Ubuntu **UAV PC** (the Physical
+Twin, runs PX4 + Gazebo) and a Mac/Linux **laptop** (the Digital Twin, runs the
+dashboard). Full detail in [Quick start](#quick-start); this is the short path.
+
+**On the UAV PC — once.** Install PX4, then the PT scripts (without these,
+"Start sim" has nothing to run):
+
+```bash
+git clone https://github.com/PX4/PX4-Autopilot.git --recursive ~/PX4-Autopilot
+cd ~/PX4-Autopilot && bash ./Tools/setup/ubuntu.sh && make px4_sitl gazebo-classic
+sudo apt install openssh-server
+```
+
+```bash
+git clone https://github.com/danishwasan/UAV-Cyber-Digital-Twin-with-Offensive-and-Defensive-Security-using-AI.git
+mkdir -p ~/uav_cyber_testbed
+cp -r UAV-Cyber-Digital-Twin-with-Offensive-and-Defensive-Security-using-AI/uav-cyber-ml/pt-setup/{scripts,config} ~/uav_cyber_testbed/
+chmod +x ~/uav_cyber_testbed/scripts/*.sh
+hostname -I | awk '{print $1}'      # ← note this address
+```
+
+**On the laptop (DT).** Clone, install, enable key-based SSH — the project uses
+`BatchMode`, so passwords will not work:
+
+```bash
+git clone https://github.com/danishwasan/UAV-Cyber-Digital-Twin-with-Offensive-and-Defensive-Security-using-AI.git
+cd UAV-Cyber-Digital-Twin-with-Offensive-and-Defensive-Security-using-AI/uav-cyber-ml
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+ssh-copy-id <user>@<PT-ip>
+```
+
+**Check the link, then fly.** Close QGroundControl first — it holds UDP 14550:
+
+```bash
+export UAV_HOST=<PT-ip>
+export UAV_SSH_USER=<user>
+python scripts/uav_link.py          # all six checks must pass
+./run_dashboard.sh                  # → http://127.0.0.1:8000
+```
+
+In the browser: **Start sim** (Gazebo appears on the UAV PC), then run
+**benign**. Altitude rises, the trail follows the plan, and a run appears under
+`datasets/runs/benign/run_00/`.
+
+> **On DHCP?** No extra configuration needed. The PT learns the DT's address
+> from the SSH connection that starts SITL, so telemetry follows your laptop
+> wherever DHCP puts it. If the PT's own address changes, re-run `uav_link.py`
+> (or use `UAV_HOST=<pt-hostname>.local`). See
+> [Network setup](#configuration).
+
+**Nothing moving?** Run `python scripts/uav_link.py` — it names the failing
+piece. The usual causes are a wrong `UAV_HOST`, missing SSH keys, or
+QGroundControl holding port 14550.
 
 ---
 
