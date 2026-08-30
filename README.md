@@ -158,6 +158,7 @@ below from inside that folder, not from the repository root.
     │   ├── DATA_DICTIONARY.md
     │   └── runs/             # populated by the orchestrator / dashboard
     ├── scripts/
+    │   ├── uav_link.py       # preflight: check the DT → PT network link
     │   └── enable_network_capture.sh
     └── Doc/
         └── Manual.pdf        # same technical manual, alongside the code
@@ -331,14 +332,84 @@ Numbered path to a first successful **benign** flight with live DT visualisation
 
 Central file: [`config.py`](uav-cyber-ml/config.py). Prefer **environment variables** for lab-specific values so you never commit secrets.
 
+### 🌐 Network setup: connecting the DT to the PT (read this first)
+
+The defaults below (`192.168.123.130`, user `danish`) are the **authors' bench**,
+where the UAV workstation holds a **static** address. On a normal DHCP network
+your Physical Twin has a **different address**, often a new one after each
+reboot — so the defaults will not reach it. This is the most common setup
+problem, and it needs **no code changes**: everything is environment variables.
+
+**Step 1 — find your PT's address.** On the **UAV PC**, run:
+
+```bash
+hostname -I | awk '{print $1}'      # e.g. 192.168.1.42
+whoami                              # your SSH user
+```
+
+**Step 2 — check the link from the DT.** On the **Digital Twin host**:
+
+```bash
+python scripts/uav_link.py --host 192.168.1.42 --user pilot
+```
+
+This checks DNS, ping, the SSH port, key-based SSH login, whether UDP 14550 is
+free, and which interface tcpdump should capture on — then prints the exact
+`export` lines to use. If you don't know the address, `python scripts/uav_link.py --scan`
+lists hosts on your subnet with SSH open.
+
+**Step 3 — export and launch:**
+
+```bash
+export UAV_HOST=192.168.1.42
+export UAV_SSH_USER=pilot
+./run_dashboard.sh
+```
+
+Put those `export` lines in your shell profile (`~/.zshrc`, `~/.bashrc`) to make
+them persistent.
+
+<details>
+<summary><strong>Surviving DHCP address changes</strong> (recommended)</summary>
+
+Rather than chasing a new IP after every reboot, point `UAV_HOST` at the PT's
+**mDNS hostname**, which stays stable:
+
+```bash
+# On the UAV PC (Ubuntu) — usually already installed:
+sudo apt install avahi-daemon
+hostname                            # e.g. uav-station
+
+# On the DT host — verify it resolves, then use it:
+ping uav-station.local
+export UAV_HOST=uav-station.local
+```
+
+`config.py` resolves the name to an IP once at startup, because the network
+recorder compares captured packet addresses against `UAV_HOST` to label
+direction — a bare hostname would silently mislabel every packet rather than
+fail loudly.
+
+The most robust option, if you control the router, is a **DHCP reservation**
+(static lease) that always hands the PT the same address. Then use that IP.
+
+</details>
+
+| Symptom | Fix |
+|---------|-----|
+| `Physical Twin unreachable` | Wrong `UAV_HOST`/`UAV_SSH_USER`, or no SSH key. Run `python scripts/uav_link.py`. |
+| SSH prompts for a password | The project uses `BatchMode` (keys only). Run `ssh-copy-id <user>@<host>`. |
+| Network CSV/pcap empty | Wrong capture interface. `uav_link.py` reports the right one; set `NET_IFACE`. |
+| PT and DT on different subnets | They must share a LAN. Check both with `hostname -I`; Wi-Fi client isolation also blocks this. |
+
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `UAV_HOST` | `192.168.123.130` | Physical Twin IP |
+| `UAV_HOST` | `192.168.123.130` | Physical Twin IP **or hostname** (e.g. `uav.local`; resolved at startup) |
 | `UAV_SSH_USER` | `danish` | SSH user |
 | `MAV_GATEWAY` | `1` | `0`/`false`/`off` = bypass gateway (direct to PX4; reactive-only) |
 | `MAV_GATEWAY_PORT` | `19550` | Local gateway listen port |
 | `MAV_GATEWAY_HOST` | `127.0.0.1` | Gateway bind host |
-| `NET_IFACE` | auto (`route get`) | tcpdump interface toward UAV |
+| `NET_IFACE` | auto-detected | tcpdump interface toward UAV (`route get` on macOS, `ip route get` on Linux) |
 | `FLIGHT_PROFILE` | `mission` | `mission` \| `hover` |
 | `DEFENSE_MODE` | `proactive` | `proactive` \| `reactive` \| `hybrid` \| `prevent` \| `soft` |
 | `IDS_PRIMARY_MODEL` | `cnn1d` | `cnn1d` (TinyMAV) or `fusion` (LightGBM cascade) |
