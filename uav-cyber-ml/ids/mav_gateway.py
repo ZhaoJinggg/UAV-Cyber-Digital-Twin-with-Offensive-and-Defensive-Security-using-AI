@@ -4,7 +4,7 @@ Architecture
 ------------
 Lab TX path (benign / attacker / defender) normally used ``udpout:UAV:14550``.
 With the gateway enabled those sockets target ``udpout:127.0.0.1:GATEWAY_PORT``
-and this process forwards only *allowed* datagrams to ``UAV_HOST:GCS_PORT``.
+and this process forwards only *allowed* datagrams to ``UAV_HOST:GCS_TX_PORT``.
 
 Trusted GCS sysids (controller, defender, recorder) always pass.
 When Defense is ON and mode is ``proactive`` / ``hybrid``, dangerous messages
@@ -126,7 +126,7 @@ class MavGateway:
     def __init__(self):
         self.listen_host = "127.0.0.1"
         self.listen_port = int(getattr(C, "MAV_GATEWAY_PORT", 19550))
-        self.dest = (C.UAV_HOST, int(C.GCS_PORT))
+        self.dest = (C.UAV_HOST, int(getattr(C, "GCS_TX_PORT", C.GCS_PORT)))
         self._sock: socket.socket | None = None
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()

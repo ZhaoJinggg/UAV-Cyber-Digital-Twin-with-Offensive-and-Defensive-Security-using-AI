@@ -41,6 +41,16 @@ TESTBED_DIR = "~/uav_cyber_testbed"
 # ---- MAVLink ports on the UAV (bound to 0.0.0.0, reachable from Mac) ----
 GCS_API_PORT = 18570   # onboard GCS API: attacks + telemetry stream requests
 GCS_PORT = 14550       # normal GCS (used by QGroundControl)
+# Port on the UAV that accepts *commands* from the DT.
+#
+# This is deliberately NOT GCS_PORT. PX4 SITL's instance on 14550 is the
+# localhost-only one: it receives remote datagrams but never answers them, so
+# arming appears to do nothing (COMMAND_ACK never returns and the vehicle stays
+# disarmed). The network-facing instance — the one pt-setup's
+# enable_qgc_mavlink.sh starts with "-t <DT ip> -o 14550" — listens here and
+# does reply. Telemetry still arrives on GCS_PORT; only the command direction
+# uses this.
+GCS_TX_PORT = int(os.environ.get("GCS_TX_PORT", "14541"))
 OFFBOARD_PORT = 14580  # offboard API
 RX_PORT = 14540        # telemetry
 XRCE_PORT = 8888
