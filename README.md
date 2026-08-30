@@ -11,7 +11,7 @@ A research cyber-range coupling a **Physical Twin** (PX4 + Gazebo SITL) with a *
 [![MAVLink](https://img.shields.io/badge/MAVLink-pymavlink-1B4F72?style=flat-square)](#architecture-overview)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Dashboard-009688?style=flat-square&logo=fastapi&logoColor=white)](#running-the-dashboard)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-lightgrey?style=flat-square)](#prerequisites)
-[![License](https://img.shields.io/badge/License-TBD%20%2F%20Private%20research-important?style=flat-square)](#citation--license)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 [Features](#features) ·
 [Architecture](#architecture-overview) ·
@@ -572,7 +572,15 @@ open Manual.pdf            # macOS
 
 The associated research article is **in preparation / forthcoming** and has not yet been published. A formal citation (BibTeX / APA) will be added here once the paper is available. In the meantime, if you use this software or dataset, please cite this repository and optionally contact the authors for the preferred citation. Please also acknowledge the PX4, Gazebo, MAVLink, and pymavlink communities.
 
-**License:** Research code pending an explicit `LICENSE` (e.g. MIT or Apache-2.0 for software; separate terms for datasets if required). Contact the authors for reuse until terms are published.
+**License:** [MIT](LICENSE) © 2026 Danish Vasan. You may use, modify, and
+redistribute this software, including commercially, provided the copyright
+notice and licence text are retained. The software is provided "as is", without
+warranty of any kind.
+
+> **Scope note.** The MIT licence covers the **software in this repository**.
+> Datasets generated with it, and the technical manual (`Manual.pdf`), are not
+> covered by it — if you publish those separately, state their terms explicitly
+> (a data licence such as CC BY 4.0 is common for research datasets).
 
 ---
 
