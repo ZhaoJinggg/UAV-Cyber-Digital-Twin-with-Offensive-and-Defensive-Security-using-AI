@@ -554,6 +554,9 @@ open Manual.pdf            # macOS
 |---------|-------------------|
 | `ModuleNotFoundError: No module named 'attacks'` (also `ids`, `dashboard`, `config`) | You are in the wrong directory. All packages are inside `uav-cyber-ml/` — run `cd uav-cyber-ml` first. Every command in this README assumes that working directory. |
 | `FileNotFoundError: … datasets/physical_processed_dataset.csv` on `python -m ids` | Expected: no dataset CSVs ship with the repo. Use the pretrained models already in `ids/artifacts/`, or record your own runs first (`python orchestrator.py --scope core --runs 5` then `python build_dataset.py`). |
+| `./run_dashboard.sh: permission denied` | Make it executable: `chmod +x run_dashboard.sh`. (Fixed in-repo; only affects clones made before that fix.) |
+| `env: bash\r: No such file or directory` | The script has Windows CRLF line endings. Fix with `perl -i -pe 's/\r$//' run_dashboard.sh`, or just run `bash run_dashboard.sh`. (Fixed in-repo; a `.gitattributes` now pins `*.sh` to LF.) |
+| `.venv/bin/python: No such file or directory` | `run_dashboard.sh` expects the virtualenv at `uav-cyber-ml/.venv`. Create it there (step 2 of [Quick start](#quick-start)), or launch directly: `python -m uvicorn dashboard.server:app --host 127.0.0.1 --port 8000`. |
 | SSH / “Physical Twin unreachable” | Wrong LAN, host down, or key auth. Check `UAV_HOST` / `UAV_SSH_USER`. |
 | Twin frozen / no telemetry | Port **14550** held by QGroundControl; close it or rebind. Confirm SITL is up. |
 | No Gazebo window on UAV | `gzserver` without `gzclient` — dashboard Start sim / `ssh_control.ensure_gzclient` should start GUI on `DISPLAY=:0`. |
