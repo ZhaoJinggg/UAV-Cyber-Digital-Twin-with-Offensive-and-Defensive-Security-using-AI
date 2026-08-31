@@ -140,6 +140,10 @@ class MavLink:
     def __init__(self, sysid: int, port: int | None = None, host: str | None = None,
                  spoof_gcs: bool = True):
         self.host, self.port = _tx_endpoint(host, port)
+        # Command tx may route through the local gateway (self.host = 127.0.0.1),
+        # but the feedback socket must reach PX4 directly — otherwise heartbeats
+        # go to DT's own loopback and PX4 never sticky-peers back (no command link).
+        self.uav_host = host or C.UAV_HOST
         self.sysid = sysid
         self._spoof = spoof_gcs
         self.conn = mavutil.mavlink_connection(
@@ -150,7 +154,7 @@ class MavLink:
         self.rx = None
         try:
             self.rx = mavutil.mavlink_connection(
-                f"udpout:{self.host}:{C.GCS_API_PORT}",
+                f"udpout:{self.uav_host}:{C.GCS_API_PORT}",
                 source_system=sysid, source_component=191,
             )
         except Exception:
@@ -203,7 +207,7 @@ class MavLink:
         )
         try:
             self.rx = mavutil.mavlink_connection(
-                f"udpout:{self.host}:{C.GCS_API_PORT}",
+                f"udpout:{self.uav_host}:{C.GCS_API_PORT}",
                 source_system=self.sysid, source_component=191,
             )
         except Exception:
