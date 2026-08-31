@@ -129,7 +129,15 @@ class PhysicalRecorder:
         while not self._stop.is_set():
             now = time.time()
 
-            m = conn.recv_match(blocking=True, timeout=0.02)
+            try:
+                m = conn.recv_match(blocking=True, timeout=0.02)
+            except OSError:
+                # stop() closes the socket from another thread; that surfaces
+                # here as EBADF. Expected during shutdown — exit quietly rather
+                # than dumping a traceback at the end of every run.
+                if self._stop.is_set():
+                    break
+                raise
             if m is not None and m.get_srcSystem() == C.PX4_SYSID:
                 # once we know PX4's address, raise telemetry rates
                 if not requested:
@@ -169,8 +177,14 @@ class PhysicalRecorder:
                                 + self._derived(state))
                 next_sample += sample_dt
 
-            # high-rate live push -> twin/graphs (dashboard only, decoupled)
-            if self._on_sample is not None and now >= next_live:
+            # high-rate live push -> twin/graphs, and shared vehicle state.
+            # NOT gated on _on_sample: _emit_sample also publishes the shared
+            # vehicle snapshot that MavLink.wait_heartbeat() falls back on when
+            # PX4's command-port heartbeat is silent (it is, for a remote DT).
+            # Gating this on the dashboard callback left CLI orchestrator runs
+            # with no vehicle state at all, so arming failed with
+            # "no heartbeat on command link" and the UAV never left the ground.
+            if now >= next_live:
                 self._emit_sample(now, state, max(now - last_live, 1e-3))
                 last_live = now
                 next_live = now + live_dt
@@ -247,10 +261,11 @@ class PhysicalRecorder:
             update_vehicle_state(payload)
         except Exception:
             pass
-        try:
-            self._on_sample(payload)
-        except Exception:
-            pass
+        if self._on_sample is not None:
+            try:
+                self._on_sample(payload)
+            except Exception:
+                pass
 
     @staticmethod
     def _derived(s: dict) -> list:

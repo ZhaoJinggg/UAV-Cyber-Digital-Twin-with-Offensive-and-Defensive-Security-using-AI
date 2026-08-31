@@ -1,4 +1,19 @@
-# Shell scripts must keep LF endings regardless of the OS they are edited on.
-# CRLF in a script breaks its shebang on every Unix host: `#!/usr/bin/env bash\r`
-# makes env look for a command literally named "bash\r".
-*.sh text eol=lf
+# Keep line endings sane across platforms.
+# Shell scripts MUST be LF — a CRLF shebang makes the kernel look for
+# "bash\r" and the script fails with: env: bash\r: No such file or directory
+*.sh      text eol=lf
+*.py      text eol=lf
+*.md      text eol=lf
+*.json    text eol=lf
+*.txt     text eol=lf
+*.css     text eol=lf
+*.js      text eol=lf
+*.html    text eol=lf
+
+# Binary assets — never touch these.
+*.pdf     binary
+*.pt      binary
+*.joblib  binary
+*.pcap    binary
+*.png     binary
+*.jpg     binary

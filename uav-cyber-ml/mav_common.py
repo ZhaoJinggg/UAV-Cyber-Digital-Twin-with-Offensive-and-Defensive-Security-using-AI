@@ -122,7 +122,7 @@ def vehicle_armed() -> bool | None:
 def _tx_endpoint(host: str | None, port: int | None) -> tuple[str, int]:
     """Resolve TX host/port — prefer local proactive gateway when enabled."""
     if host is not None or port is not None:
-        return (host or C.UAV_HOST), int(port or C.GCS_PORT)
+        return (host or C.UAV_HOST), int(port or C.GCS_TX_PORT)
     if getattr(C, "MAV_GATEWAY_ENABLED", True):
         try:
             from ids.mav_gateway import ensure_gateway_started
@@ -131,7 +131,7 @@ def _tx_endpoint(host: str | None, port: int | None) -> tuple[str, int]:
             pass
         return (getattr(C, "MAV_GATEWAY_HOST", "127.0.0.1"),
                 int(getattr(C, "MAV_GATEWAY_PORT", 19550)))
-    return C.UAV_HOST, int(C.GCS_PORT)
+    return C.UAV_HOST, int(C.GCS_TX_PORT)
 
 
 class MavLink:

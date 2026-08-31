@@ -6,13 +6,51 @@ import os
 from pathlib import Path
 
 # ---- UAV machine (PX4 SITL host) ----
-UAV_HOST = os.environ.get("UAV_HOST", "192.168.123.130")
+def _resolve_host(value: str) -> str:
+    """Return a dotted IPv4 for ``value``, which may be an IP or a hostname.
+
+    Downstream code compares captured packet addresses against ``UAV_HOST``
+    (see ``recorders/network_recorder.py``), so it must end up an IP literal —
+    a bare hostname would silently mislabel every packet's direction rather
+    than fail loudly. Resolving here lets users point ``UAV_HOST`` at an mDNS
+    name such as ``uav.local``, which survives DHCP lease changes, while
+    everything downstream still sees an address it can compare.
+
+    An IP is returned untouched (no lookup, no delay). If a hostname cannot be
+    resolved the original string is returned so the failure surfaces later with
+    useful context (SSH/telemetry errors) instead of crashing at import time.
+    """
+    import socket
+    try:
+        socket.inet_aton(value)
+        return value                      # already an IPv4 literal
+    except OSError:
+        pass
+    try:
+        return socket.gethostbyname(value)
+    except Exception:
+        return value
+
+
+# Accepts an IP (192.168.1.42) or a hostname (uav.local) — see _resolve_host.
+UAV_HOST_INPUT = os.environ.get("UAV_HOST", "192.168.123.130")
+UAV_HOST = _resolve_host(UAV_HOST_INPUT)
 SSH_USER = os.environ.get("UAV_SSH_USER", "danish")
 TESTBED_DIR = "~/uav_cyber_testbed"
 
 # ---- MAVLink ports on the UAV (bound to 0.0.0.0, reachable from Mac) ----
 GCS_API_PORT = 18570   # onboard GCS API: attacks + telemetry stream requests
 GCS_PORT = 14550       # normal GCS (used by QGroundControl)
+# Port on the UAV that accepts *commands* from the DT.
+#
+# This is deliberately NOT GCS_PORT. PX4 SITL's instance on 14550 is the
+# localhost-only one: it receives remote datagrams but never answers them, so
+# arming appears to do nothing (COMMAND_ACK never returns and the vehicle stays
+# disarmed). The network-facing instance — the one pt-setup's
+# enable_qgc_mavlink.sh starts with "-t <DT ip> -o 14550" — listens here and
+# does reply. Telemetry still arrives on GCS_PORT; only the command direction
+# uses this.
+GCS_TX_PORT = int(os.environ.get("GCS_TX_PORT", "14541"))
 OFFBOARD_PORT = 14580  # offboard API
 RX_PORT = 14540        # telemetry
 XRCE_PORT = 8888
@@ -43,29 +81,32 @@ def _detect_iface(host: str) -> str:
 
     macOS tcpdump does not reliably support ``-i any`` (BPF-based capture),
     so we resolve the concrete interface (e.g. ``en0``) toward the UAV host.
-    Linux (including WSL2) uses ``ip route get`` instead of BSD ``route get``.
+
+    Handles both platforms the DT runs on: ``route get`` on macOS and
+    ``ip route get`` on Linux. Falls back to a platform-appropriate guess —
+    returning ``en0`` on Linux (as this once did) points tcpdump at an
+    interface that does not exist there, so capture fails with an empty CSV.
     """
-    import platform
     import subprocess
-    system = platform.system()
+    import sys
     try:
-        if system == "Linux":
-            out = subprocess.run(["ip", "route", "get", host], capture_output=True,
-                                 text=True, timeout=3).stdout
-            for line in out.splitlines():
-                tokens = line.split()
-                if "dev" in tokens:
-                    return tokens[tokens.index("dev") + 1]
-        else:
+        if sys.platform == "darwin":
             out = subprocess.run(["route", "get", host], capture_output=True,
                                  text=True, timeout=3).stdout
             for line in out.splitlines():
                 line = line.strip()
                 if line.startswith("interface:"):
                     return line.split(":", 1)[1].strip()
+        else:
+            # Linux: "192.168.1.42 via 192.168.1.1 dev wlp3s0 src ..."
+            out = subprocess.run(["ip", "route", "get", host],
+                                 capture_output=True, text=True, timeout=3).stdout
+            parts = out.split()
+            if "dev" in parts:
+                return parts[parts.index("dev") + 1]
     except Exception:
         pass
-    return "eth0" if system == "Linux" else "en0"
+    return "en0" if sys.platform == "darwin" else "any"
 
 
 # tcpdump interface on the Mac (auto-detected toward the UAV; override via env)
