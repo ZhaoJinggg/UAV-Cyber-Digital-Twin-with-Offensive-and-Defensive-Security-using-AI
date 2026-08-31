@@ -25,7 +25,9 @@ printf '%s\n' "$RULE" > "$TMP"
 
 # Validate syntax before installing, then install with strict perms.
 if sudo visudo -cf "$TMP" >/dev/null; then
-  sudo install -m 0440 -o root -g wheel "$TMP" "$SUDOERS_FILE"
+  # GID 0 is `wheel` on macOS and `root` on Linux — the numeric id keeps both
+  # platforms working, where the name `wheel` does not exist on Ubuntu/Debian.
+  sudo install -m 0440 -o root -g 0 "$TMP" "$SUDOERS_FILE"
   rm -f "$TMP"
   echo "==> Installed. Verifying passwordless tcpdump…"
   if sudo -n "$TCPDUMP_BIN" --version >/dev/null 2>&1; then
